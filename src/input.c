@@ -62,6 +62,8 @@ struct imp_multi_rec {
 
 #define    IN_LOCAL_CONTROL_BLOCK(a)        ((((unsigned long)(a)) & 0xffffff00) == 0xe0000000)
 
+#define    IN_LOCAL_SCOPE_BLOCK(a)        ((((unsigned long)(a)) & 0xEFFF0000) == 0xEFFF0000)
+
 /**************************************************************************
  * FUNCTION NAME : imp_get_group_if_addr
  **************************************************************************
@@ -233,6 +235,18 @@ static int imp_verify_multicast_addr(pi_addr *p_pia)
                           imp_pi_ntoa(p_pia));
             return -1;
         }
+
+	/* 239.255.0.0/16 is defined to be the IPv4 Local Scope.
+	 * [RFC 2365 section 6.1]
+	 */
+
+        if (IN_LOCAL_SCOPE_BLOCK(p_pia->v4.sin_addr.s_addr)) {
+
+            IMP_LOG_INFO("Group address %s belongs to IPv4 Local Scope.\n",
+                          imp_pi_ntoa(p_pia));
+            return -1;
+        }
+
 
     }else
         return -1;
