@@ -594,6 +594,15 @@ void mcast_allow_handler(imp_interface *p_if, pi_addr *p_ga,
          }
         return;
     }
+    
+    p_gp = imp_group_create(p_if, p_ga, p_src_list, GROUP_INCLUDE, version);
+
+    if (p_gp == NULL) {
+        IMP_LOG_ERROR("imp_group_create failed");
+        return;
+    }
+
+    imp_membership_db_update(p_ga);
 
     imp_group_print(p_if);
 }
@@ -680,6 +689,17 @@ void mcast_block_handler(imp_interface *p_if, pi_addr *p_ga,
 
         return;
     }
+    
+    p_gp = imp_group_create(p_if, p_ga, p_src_list, GROUP_EXCLUDE, version);
+
+    if (p_gp == NULL) {
+        IMP_LOG_ERROR("imp_group_create failed");
+        return;
+    }
+
+    imp_membership_db_update(p_ga);
+
+    imp_group_print(p_if);
 
 }
 
