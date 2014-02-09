@@ -416,11 +416,11 @@ void mcast_to_in_handler(imp_interface *p_if, pi_addr *p_ga,
             if(p_gp->gs_sch_times == 0) {
                 IMP_LOG_DEBUG("Send Q(G)\n");
                 p_gp->gs_sch_times = DEFAULT_RV;
-                imp_set_timer(TIMER_LMQT, p_gp->timer);
+                imp_set_timer(get_group_leave_time(), p_gp->timer);
             }
         }
 
-        if(p_gp->sch_timer == NULL) {
+        if(p_gp->sch_timer == NULL && get_group_leave_time()) {
 
             p_gp->sch_timer = imp_add_timer(
                                 group_source_specific_timer_handler, p_gp);

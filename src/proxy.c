@@ -184,6 +184,17 @@ static STATUS load_config(const char *file)
             strncpy(downinf[down_num], p_value, IFNAMSIZ);
             down_num++;
             IMP_LOG_DEBUG("downstream interface is %s\n", p_value);
+        } else if (strcmp(p_token, "quickleave") == 0) {
+
+            if (strcmp(p_value, "enable") == 0) {
+                mproxy.quick_leave = 1;
+            }else if (strcmp(p_value, "disable") == 0) {
+                mproxy.quick_leave = 0;
+            }else {
+
+                IMP_LOG_ERROR("error value %s, should be enable or disable\n", p_value);
+                return STATUS_NOK;
+            }
         }else {
 
             IMP_LOG_ERROR("unknown token %s\n", p_token);
@@ -253,6 +264,14 @@ int get_im_version(int family)
         IMP_LOG_ERROR("unsoupprt family %d", family);
     return 0;
 }
+
+int get_group_leave_time()
+{
+    if(mproxy.quick_leave)
+        return 0;
+    return TIMER_LMQT;
+}
+
 void free_resource(void)
 {
     imp_interface_cleanup_all();
