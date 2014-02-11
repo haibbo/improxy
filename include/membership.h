@@ -27,6 +27,7 @@ typedef struct imp_mfc {
     LIST_ENTRY(imp_mfc) link;
     struct if_set         ttls;
     pi_addr             pia;
+    int                 iif_index;
 }imp_mfc;
 
 typedef struct imp_membership_db {
@@ -70,7 +71,7 @@ void imp_membership_db_cleanup(imp_membership_db *p_md);
  * Return       : NULL
 *------------------------------------------------------------------------
 */
-void imp_membership_db_mfc_add(pi_addr *p_ga, pi_addr *p_src, if_set *p_ttls);
+void imp_membership_db_mfc_add(int iif_index, pi_addr *p_ga, pi_addr *p_src, if_set *p_ttls);
 /*-----------------------------------------------------------------------
  * Name         : imp_membership_db_mfc_find
  *

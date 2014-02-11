@@ -167,7 +167,7 @@ void imp_membership_db_print_all(void)
  * Return       : NULL
 *------------------------------------------------------------------------
 */
-void imp_membership_db_mfc_add(pi_addr *p_ga, pi_addr *p_src, if_set *p_ttls)
+void imp_membership_db_mfc_add(int iif_index, pi_addr *p_ga, pi_addr *p_src, if_set *p_ttls)
 {
     imp_membership_db *p_md;
     imp_mfc *p_mfc;
@@ -177,7 +177,7 @@ void imp_membership_db_mfc_add(pi_addr *p_ga, pi_addr *p_src, if_set *p_ttls)
         return;
     }
 
-    if ( k_add_mfc(p_ga, p_src, p_ttls) < 0 ) {
+    if ( k_add_mfc(iif_index, p_ga, p_src, p_ttls) < 0 ) {
 
         IMP_LOG_ERROR("add mfc fail %s\n", strerror(errno));
         return;
@@ -191,7 +191,8 @@ void imp_membership_db_mfc_add(pi_addr *p_ga, pi_addr *p_src, if_set *p_ttls)
 
     memcpy(&p_mfc->pia, p_src, sizeof(pi_addr));
     memcpy(&p_mfc->ttls, p_ttls, sizeof(if_set));
-
+    p_mfc->iif_index = iif_index;
+    
     LIST_INSERT_HEAD(&p_md->mfc_list, p_mfc, link);
 
 
@@ -288,7 +289,7 @@ void imp_membership_db_mfc_update(pi_addr *p_ga, pi_addr *p_src,
             /*pp need MRT_DEL_MFC first to update*/
             k_del_mfc(&p_md->pig, &p_mfc->pia);
             /*change mfc*/
-            k_add_mfc(&p_md->pig, &p_mfc->pia, &p_mfc->ttls);
+            k_add_mfc(p_mfc->iif_index, &p_md->pig, &p_mfc->pia, &p_mfc->ttls);
         }
 
         if(p_src != NULL)
@@ -507,7 +508,7 @@ void imp_membership_db_update(pi_addr *p_ga)
         return;
     }
 
-    k_mcast_msfilter(&p_md->pig, p_md->src_list, p_md->type);
+    //k_mcast_msfilter(&p_md->pig, p_md->src_list, p_md->type);
     p_md->update_flag = 0;
     return;
 }

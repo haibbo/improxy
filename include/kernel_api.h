@@ -30,6 +30,7 @@ void k_del_ip4_vif (int socket, int ifindex);
 STATUS k_start4_mproxy(int socket);
 void k_stop4_mproxy(int socket);
 int k_get_vmif(int ifindex,int family);
+int k_get_rlif(int ifindex, int family);
 void k_add_ip6_mif (int socket, int ifindex);
 void k_del_ip6_mif (int socket, int ifindex);
 STATUS k_start6_mproxy(int socket);
@@ -37,7 +38,7 @@ void k_stop6_mproxy(int socket);
 /*protocol independent code*/
 STATUS k_mcast_join( pi_addr* pia, char* ifname);
 STATUS k_mcast_leave(pi_addr* pia, char* ifname);
-STATUS k_add_mfc(pi_addr *p_mcastgrp , pi_addr *p_origin, if_set *p_ttls);
+STATUS k_add_mfc(int iif_index, pi_addr *p_mcastgrp , pi_addr *p_origin, if_set *p_ttls);
 STATUS k_del_mfc(pi_addr *p_mcastgrp, pi_addr *p_origin);
 STATUS k_mcast_msfilter(pi_addr* p_addr, pa_list *p_addr_list,int fmode);
 #endif

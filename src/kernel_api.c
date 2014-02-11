@@ -72,6 +72,22 @@ static int get_mifi_ipv6(int ifindex)
     return 0;
 }
 
+
+static int get_rifi_ipv4(int vif)
+{
+    if (vif > MAXMIFS - 1)
+        return 0;
+    return vif2phyif[vif];
+
+}
+
+static int get_rifi_ipv6(int mif)
+{
+    if (mif > MAXMIFS - 1)
+        return 0;
+    return mif2phyif[mif];
+}
+
 #endif
 int k_get_vmif(int ifindex, int family)
 {
@@ -93,6 +109,26 @@ int k_get_vmif(int ifindex, int family)
     return 0;
 }
 
+/*get real interface index*/
+int k_get_rlif(int vif, int family)
+{
+    if (family == AF_INET) {
+   #ifdef VIF_NOT_EQUAL_MIF
+        return get_rifi_ipv4(vif);
+   #else
+        return vif;
+   #endif
+
+    } else if (family == AF_INET6) {
+   #ifdef VIF_NOT_EQUAL_MIF
+        return get_rifi_ipv6(vif);
+   #else
+        return vif;
+   #endif
+    }
+   
+    return 0;
+}
 
 void k_add_ip4_vif (int socket, struct in_addr* sin, int ifindex)
 {
@@ -140,8 +176,8 @@ void k_stop4_mproxy(int socket)
 }
 
 
-static STATUS k_add_ip4_mfc(int socket, pi_addr *p_mcastgrp
-    , pi_addr *p_origin, if_set *p_ttls)
+static STATUS k_add_ip4_mfc(int socket, int iif_index, pi_addr *p_mcastgrp
+    ,pi_addr *p_origin, if_set *p_ttls)
 {
     struct mfcctl mfc;
     int i;
@@ -151,7 +187,8 @@ static STATUS k_add_ip4_mfc(int socket, pi_addr *p_mcastgrp
     memcpy(&mfc.mfcc_origin, &p_origin->v4.sin_addr, sizeof(struct in_addr));
     memcpy(&mfc.mfcc_mcastgrp, &p_mcastgrp->v4.sin_addr, sizeof(struct in_addr));
 
-    mfc.mfcc_parent = k_get_vmif(get_up_if_index(), AF_INET);
+    //mfc.mfcc_parent = k_get_vmif(get_up_if_index(), AF_INET);
+    mfc.mfcc_parent = k_get_vmif(iif_index, AF_INET);
 
     IMP_LOG_DEBUG("upif_index = %d\n", get_up_if_index());
     for (i = 0;i < MAXVIFS;i++) {
@@ -229,7 +266,7 @@ void k_stop6_mproxy(int socket)
 }
 
 
-static STATUS k_add_ip6_mfc(int socket, pi_addr *p_mcastgrp
+static STATUS k_add_ip6_mfc(int socket, int iif_index, pi_addr *p_mcastgrp
     , pi_addr *p_origin, if_set *p_ttls)
 {
 
@@ -238,7 +275,7 @@ static STATUS k_add_ip6_mfc(int socket, pi_addr *p_mcastgrp
     memcpy(&mf6c.mf6cc_origin, &p_origin->v6, sizeof(mf6c.mf6cc_origin));
     memcpy(&mf6c.mf6cc_mcastgrp, &p_mcastgrp->v6, sizeof(mf6c.mf6cc_mcastgrp));
 
-    mf6c.mf6cc_parent = k_get_vmif(get_up_if_index(), AF_INET6);
+    mf6c.mf6cc_parent = k_get_vmif(iif_index, AF_INET6);
 
     mf6c.mf6cc_ifset = *p_ttls;
 
@@ -285,10 +322,9 @@ STATUS k_mcast_join(pi_addr* p_addr, char* ifname)
 
 STATUS k_mcast_leave( pi_addr* p_addr, char* ifname)
 {
-    #if 0
+    #if 1
     struct group_req req;
     int socket = 0;
-    int ifindex = 0;
 
     if (ifname != NULL) {
         if ((req.gr_interface = if_nametoindex(ifname)) == 0) {
@@ -304,21 +340,23 @@ STATUS k_mcast_leave( pi_addr* p_addr, char* ifname)
     socket = get_udp_socket(p_addr->ss.ss_family);
     return setsockopt(socket, imp_family_to_level(p_addr->ss.ss_family), MCAST_LEAVE_GROUP,
         &req, sizeof(struct group_req));
-    #endif
+    #else
     return k_mcast_msfilter(p_addr, NULL, MCAST_INCLUDE);
+    #endif
+
 }
 
-STATUS k_add_mfc(pi_addr *p_mcastgrp , pi_addr *p_origin, if_set *p_ttls)
+STATUS k_add_mfc(int iif_index, pi_addr *p_mcastgrp , pi_addr *p_origin, if_set *p_ttls)
 {
     int socket = 0;
     socket = get_igmp_mld_socket(p_mcastgrp->ss.ss_family);
 
     if (p_mcastgrp->ss.ss_family == AF_INET) {
 
-        return k_add_ip4_mfc(socket, p_mcastgrp, p_origin, p_ttls);
+        return k_add_ip4_mfc(socket, iif_index, p_mcastgrp, p_origin, p_ttls);
     } else {
 
-        return k_add_ip6_mfc(socket, p_mcastgrp, p_origin, p_ttls);
+        return k_add_ip6_mfc(socket, iif_index, p_mcastgrp, p_origin, p_ttls);
     }
 }
 
@@ -336,6 +374,7 @@ STATUS k_del_mfc(pi_addr *p_mcastgrp, pi_addr *p_origin)
 }
 
 
+#if 0
 STATUS k_mcast_msfilter(pi_addr* p_addr, pa_list *p_addr_list, int fmode)
 {
 
@@ -390,3 +429,4 @@ STATUS k_mcast_msfilter(pi_addr* p_addr, pa_list *p_addr_list, int fmode)
     free(p_gf);
     return res;
 }
+#endif

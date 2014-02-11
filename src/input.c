@@ -124,7 +124,7 @@ static int imp_get_is_forward(imp_interface* p_if, pi_addr *pigp, pi_addr *pip)
 }
 
 static int imp_get_mfcc_ttls(if_set *p_ttls, int length, pi_addr *pi_src,
-    pi_addr *p_group)
+    pi_addr *p_group, int iif_index)
 {
     imp_interface *p_if = imp_interface_first();
     unsigned char flag = 0;
@@ -138,10 +138,12 @@ static int imp_get_mfcc_ttls(if_set *p_ttls, int length, pi_addr *pi_src,
     while(p_if) {
         if (p_if->type != INTERFACE_UPSTREAM &&
             imp_get_is_forward(p_if, p_group, pi_src) &&
-            p_if->if_index < length) {
+            p_if->if_index < length &&
+            p_if->if_index != iif_index) {
 
             int vmif = 0;
-               vmif = k_get_vmif(p_if->if_index, p_group->ss.ss_family);
+            
+            vmif = k_get_vmif(p_if->if_index, p_group->ss.ss_family);
             IF_SET(vmif, p_ttls);
             flag = 1;
         }
@@ -541,6 +543,7 @@ void mcast_recv_mld(int sockfd, int version)
          */
         struct mrt6msg *p_mrmsg;
         int mif = 0;
+        int iif_index;
 
         p_mrmsg = msg.msg_iov->iov_base;
 
@@ -551,23 +554,23 @@ void mcast_recv_mld(int sockfd, int version)
         imp_build_piaddr(AF_INET6, &p_mrmsg->im6_dst, &pig);
         imp_build_piaddr(AF_INET6, &p_mrmsg->im6_src, &pia);
 
-          mif = k_get_vmif(get_up_if_index(), AF_INET6);
-
+          //mif = k_get_vmif(get_up_if_index(), AF_INET6);
+        iif_index = k_get_rlif(mif, AF_INET6);
         IMP_LOG_DEBUG("k_get_vmif = %d im6_mif %d\n", mif, p_mrmsg->im6_mif);
 
-        if (mif == p_mrmsg->im6_mif) {
+        //if (mif == p_mrmsg->im6_mif) {
 
-            if_set ttls;
+        if_set ttls;
 
-            bzero(&ttls, sizeof(ttls));
+        bzero(&ttls, sizeof(ttls));
 
-            /*get ttls*/
-            if (imp_get_mfcc_ttls(&ttls, MAXVIFS, &pia, &pig) != 0) {
+        /*get ttls*/
+        if (imp_get_mfcc_ttls(&ttls, MAXVIFS, &pia, &pig, iif_index) != 0) {
 
-                IMP_LOG_DEBUG("add MFC:src -- %s  group -- %s\n\n", imp_pi_ntoa(&pia), imp_pi_ntoa(&pig));
-                imp_membership_db_mfc_add(&pig, &pia, &ttls);
-            }
+            IMP_LOG_DEBUG("add MFC:src -- %s  group -- %s\n\n", imp_pi_ntoa(&pia), imp_pi_ntoa(&pig));
+            imp_membership_db_mfc_add(iif_index, &pig, &pia, &ttls);
         }
+        //}
         return;
 
     }
@@ -672,15 +675,16 @@ void mcast_recv_igmp(int sockfd, int version)
         if(p_if->if_index == if_index && p_if->if_addr.ss.ss_family == AF_INET)
             break;
     }
+    
+    IMP_LOG_DEBUG("src addr = %s\nreceived interface  %d\n", 
+        imp_inet_ntoa(((struct sockaddr_in*)&sa)->sin_addr.s_addr), if_index);
 
     if(p_if == NULL){
 
-        IMP_LOG_WARNING("Don't exist this VIF\n", if_index);
+        IMP_LOG_WARNING("Don't exist this VIF %d\n", if_index);
         return;
     }
 
-    IMP_LOG_DEBUG("src addr = %s\nreceived interface  %d\n",
-        imp_inet_ntoa(((struct sockaddr_in*)&sa)->sin_addr.s_addr), if_index);
 
 
     ip = (struct iphdr*)buf;
@@ -702,17 +706,17 @@ void mcast_recv_igmp(int sockfd, int version)
     }
 
     /*when protocol is zero, we need add MFC base one this kind of packet*/
-    if (ip->protocol == 0 && p_if->type == INTERFACE_UPSTREAM) {
+    if (ip->protocol == 0) {
 
         if_set ttls;
 
         bzero(&ttls, sizeof(ttls));
 
         /*get ttls*/
-        if(imp_get_mfcc_ttls(&ttls, MAXVIFS, &pia, &pig) != 0){
+        if(imp_get_mfcc_ttls(&ttls, MAXVIFS, &pia, &pig, if_index) != 0){
 
             IMP_LOG_DEBUG("add MFC:src -- %s group -- %s\n\n", imp_pi_ntoa(&pia), imp_pi_ntoa(&pig));
-            imp_membership_db_mfc_add(&pig, &pia, &ttls);
+            imp_membership_db_mfc_add(if_index, &pig, &pia, &ttls);
         }
         return;
     } else if (ip->protocol == 0) {
