@@ -195,7 +195,21 @@ static STATUS load_config(const char *file)
                 IMP_LOG_ERROR("error value %s, should be enable or disable\n", p_value);
                 return STATUS_NOK;
             }
-        }else {
+        }else if (strcmp(p_token, "down_to_up") == 0) {
+
+            if (strcmp(p_value, "enable") == 0) {
+                mproxy.down_to_up = 1;
+            }else if (strcmp(p_value, "disable") == 0) {
+                mproxy.down_to_up = 0;
+            }else {
+
+                IMP_LOG_ERROR("error value %s, should be enable or disable\n", p_value);
+                return STATUS_NOK;
+            }
+            IMP_LOG_DEBUG("%s forwarding packets form downstream if to upstream if\n",
+                           mproxy.down_to_up ? "Enable" : "Disable");
+        }
+        else {
 
             IMP_LOG_ERROR("unknown token %s\n", p_token);
             return STATUS_NOK;
@@ -254,6 +268,12 @@ int get_up_if_index(void)
 {
     return mproxy.upif_index;
 }
+
+int get_down_to_up_enable(void)
+{
+    return mproxy.down_to_up;
+}
+
 int get_im_version(int family)
 {
     if(family == AF_INET)

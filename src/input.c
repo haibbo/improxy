@@ -128,7 +128,7 @@ static int imp_get_mfcc_ttls(if_set *p_ttls, int length, pi_addr *pi_src,
 {
     imp_interface *p_if = imp_interface_first();
     unsigned char flag = 0;
-
+    int            vmif = 0;
 
     if (pi_src->ss.ss_family != p_group->ss.ss_family) {
         IMP_LOG_ERROR("unmatch family");
@@ -140,14 +140,22 @@ static int imp_get_mfcc_ttls(if_set *p_ttls, int length, pi_addr *pi_src,
             imp_get_is_forward(p_if, p_group, pi_src) &&
             p_if->if_index < length &&
             p_if->if_index != iif_index) {
-
-            int vmif = 0;
             
             vmif = k_get_vmif(p_if->if_index, p_group->ss.ss_family);
             IF_SET(vmif, p_ttls);
             flag = 1;
         }
         p_if = LIST_NEXT(p_if, link);
+    }
+    if (get_down_to_up_enable() == 1 && get_up_if_index() != iif_index) {
+
+            vmif = k_get_vmif(get_up_if_index(), p_group->ss.ss_family);
+            IF_SET(vmif, p_ttls);
+            if (flag == 0) {
+                
+                k_add_mfc(iif_index, p_group, pi_src, p_ttls);
+		   return 0;
+            }
     }
     if (flag == 0)
         IMP_LOG_DEBUG("group %s isn't interest in packet from %s\n",

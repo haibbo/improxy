@@ -73,11 +73,14 @@ typedef struct {
     unsigned char print_level;
     unsigned char syslog_level;
     unsigned char quick_leave;
+    unsigned char down_to_up;
 }mcast_proxy;
 
 int get_udp_socket(int family);
 int get_igmp_mld_socket(int family);
 int get_up_if_index(void);
+int get_down_to_up_enable(void);
+int get_group_leave_time();
 int get_im_version(int family);
 int get_group_leave_time(void);
 #endif
