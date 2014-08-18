@@ -223,7 +223,7 @@ static int imp_verify_multicast_addr(pi_addr *p_pia)
         }
     } else if(p_pia->ss.ss_family == AF_INET) {
 
-        if (!IN_MULTICAST(p_pia->v4.sin_addr.s_addr)) {
+        if (!IN_MULTICAST(ntohl(p_pia->v4.sin_addr.s_addr))) {
 
             IMP_LOG_ERROR("group address %s isn't multicast adddress\n",
                           imp_pi_ntoa(p_pia));
@@ -239,7 +239,7 @@ static int imp_verify_multicast_addr(pi_addr *p_pia)
          *    control traffic that is not forwarded off link.
          *    [RFC 5771 section 4]
          */
-        if (IN_LOCAL_CONTROL_BLOCK(p_pia->v4.sin_addr.s_addr)) {
+        if (IN_LOCAL_CONTROL_BLOCK(ntohl(p_pia->v4.sin_addr.s_addr))) {
 
             IMP_LOG_INFO("Group address %s is Local Network Control Block\n",
                           imp_pi_ntoa(p_pia));
@@ -250,7 +250,7 @@ static int imp_verify_multicast_addr(pi_addr *p_pia)
 	 * [RFC 2365 section 6.1]
 	 */
 
-        if (IN_LOCAL_SCOPE_BLOCK(p_pia->v4.sin_addr.s_addr)) {
+        if (IN_LOCAL_SCOPE_BLOCK(ntohl(p_pia->v4.sin_addr.s_addr))) {
 
             IMP_LOG_INFO("Group address %s belongs to IPv4 Local Scope.\n",
                           imp_pi_ntoa(p_pia));
