@@ -550,7 +550,6 @@ void mcast_recv_mld(int sockfd, int version)
          * the IPv6 header and all the extension headers. (See section 3 of RFC 3542)
          */
         struct mrt6msg *p_mrmsg;
-        int mif = 0;
         int iif_index;
 
         p_mrmsg = msg.msg_iov->iov_base;
@@ -563,8 +562,8 @@ void mcast_recv_mld(int sockfd, int version)
         imp_build_piaddr(AF_INET6, &p_mrmsg->im6_src, &pia);
 
           //mif = k_get_vmif(get_up_if_index(), AF_INET6);
-        iif_index = k_get_rlif(mif, AF_INET6);
-        IMP_LOG_DEBUG("k_get_vmif = %d im6_mif %d\n", mif, p_mrmsg->im6_mif);
+        iif_index = k_get_rlif(p_mrmsg->im6_mif, AF_INET6);
+        IMP_LOG_DEBUG("k_get_vmif = %d im6_mif %d\n", iif_index, p_mrmsg->im6_mif);
 
         //if (mif == p_mrmsg->im6_mif) {
 
