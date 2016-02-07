@@ -674,26 +674,6 @@ void mcast_recv_igmp(int sockfd, int version)
         }
     }
     free(ctrl);
-
-
-    /*return if the interface don't enable igmp*/
-    for(p_if = imp_interface_first();p_if;p_if = LIST_NEXT(p_if, link))
-    {
-        if(p_if->if_index == if_index && p_if->if_addr.ss.ss_family == AF_INET)
-            break;
-    }
-    
-    IMP_LOG_DEBUG("src addr = %s\nreceived interface  %d\n", 
-        imp_inet_ntoa(((struct sockaddr_in*)&sa)->sin_addr.s_addr), if_index);
-
-    if(p_if == NULL){
-
-        IMP_LOG_WARNING("Don't exist this VIF %d\n", if_index);
-        return;
-    }
-
-
-
     ip = (struct iphdr*)buf;
 
 
@@ -716,14 +696,23 @@ void mcast_recv_igmp(int sockfd, int version)
     if (ip->protocol == 0) {
 
         if_set ttls;
+	    struct igmpmsg *p_imsg;
+	    int iif_index;
 
+	    p_imsg = (struct igmpmsg*)buf;
         bzero(&ttls, sizeof(ttls));
 
+	    iif_index = k_get_rlif(p_imsg->im_vif, AF_INET);
+	    if (iif_index == 0) {
+		    IMP_LOG_ERROR("Can not found realted upstream interface, vif:%d\n", p_imsg->im_vif);
+		    return;
+	    }
+	    IMP_LOG_DEBUG("k_get_rlif = %d im_vif = %d\n", iif_index, p_imsg->im_vif);
         /*get ttls*/
-        if(imp_get_mfcc_ttls(&ttls, MAXVIFS, &pia, &pig, if_index) != 0){
+        if(imp_get_mfcc_ttls(&ttls, MAXVIFS, &pia, &pig, iif_index) != 0){
 
             IMP_LOG_DEBUG("add MFC:src -- %s group -- %s\n\n", imp_pi_ntoa(&pia), imp_pi_ntoa(&pig));
-            imp_membership_db_mfc_add(if_index, &pig, &pia, &ttls);
+            imp_membership_db_mfc_add(iif_index, &pig, &pia, &ttls);
         }
         return;
     } else if (ip->protocol == 0) {
@@ -731,11 +720,6 @@ void mcast_recv_igmp(int sockfd, int version)
         return;
     }
 
-    if (p_if->type != INTERFACE_DOWNSTREAM) {
-
-        IMP_LOG_WARNING("Don't exist this Downstream VIF\n");
-        return;
-    }
 #if 0
     /*print hex*/
     for(;i<num;i++)
@@ -747,6 +731,29 @@ void mcast_recv_igmp(int sockfd, int version)
     }
     printf("\n");
 #endif
+    /*return if the interface don't enable igmp*/
+    for(p_if = imp_interface_first();p_if;p_if = LIST_NEXT(p_if, link))
+    {
+        if(p_if->if_index == if_index && p_if->if_addr.ss.ss_family == AF_INET)
+            break;
+    }
+    
+    IMP_LOG_DEBUG("src addr = %s\nreceived interface  %d\n", 
+        imp_inet_ntoa(((struct sockaddr_in*)&sa)->sin_addr.s_addr), if_index);
+
+    if(p_if == NULL){
+
+        IMP_LOG_WARNING("Don't exist this VIF %d\n", if_index);
+        return;
+    }
+
+    if (p_if->type != INTERFACE_DOWNSTREAM) {
+
+        IMP_LOG_WARNING("Don't exist this Downstream VIF\n");
+        return;
+    }
+
+
     iph_len = ip->ihl * sizeof(int);
 
     if(iph_len < 24) {
