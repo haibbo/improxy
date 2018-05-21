@@ -362,7 +362,10 @@ STATUS init_mproxy4(mcast_proxy *p_mp)
         ui = 1;
         if (setsockopt(p_mp->igmp_socket, IPPROTO_IP, IP_PKTINFO, &ui, sizeof(ui)))
             IMP_LOG_ERROR("IP_PKTINFO: %s\n", strerror(errno));
-
+        ui = 0xC0; /* set DSCP mark CS6 for outgoing */
+        if (setsockopt(p_mp->igmp_socket, IPPROTO_IP, IP_TOS, &ui, sizeof(ui))) {
+            IMP_LOG_ERROR("IP_TOS: %s\n", strerror(errno));
+        }
 
         if(k_start4_mproxy(p_mp->igmp_socket) < 0)
             return STATUS_NOK;
