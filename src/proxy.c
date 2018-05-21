@@ -347,7 +347,7 @@ STATUS init_mproxy4(mcast_proxy *p_mp)
         if (setsockopt(p_mp->igmp_socket, IPPROTO_IP, IP_MULTICAST_TTL,
             (void*)&ui, sizeof(ui)))
             IMP_LOG_ERROR("IP_MULTICAST_TTL: %s\n", strerror(errno));
-        ui = 1;
+        ui = 0;
         if (setsockopt(p_mp->igmp_socket, IPPROTO_IP, IP_MULTICAST_LOOP,
             (void*)&ui, sizeof(ui)) < 0)
             IMP_LOG_ERROR("IP_MULTICAST_LOOP: %s\n", strerror(errno));
