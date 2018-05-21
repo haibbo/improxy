@@ -169,7 +169,6 @@ void send_igmp_mld_query(imp_interface *p_if, im_version version,
 
         struct imp_mldv2_query_hdr *p_hdr;
 
-        int outif = 0;
         unsigned char rabuf[] = {0x05, 0x02, 0x00, 0x00, 0x01, 0x00};
         struct { struct ip6_hbh p_iph;char buf[sizeof(rabuf)];} hyhoption;
         int p_hdr_len;
@@ -261,12 +260,6 @@ void send_igmp_mld_query(imp_interface *p_if, im_version version,
         p_hdr->mldh.mld_cksum = in_cusm((unsigned short*)p_hdr,
             sizeof(struct imp_mldv2_query_hdr));
 
-
-        outif = p_if->if_index;
-        if( setsockopt(socket, IPPROTO_IPV6, IPV6_MULTICAST_IF,
-            &outif, sizeof(outif)) < 0)
-            IMP_LOG_ERROR("IPV6_MULTICAST_IF fail %s\n", strerror(errno));
-
         hyhoption.p_iph.ip6h_len = 0;
         hyhoption.p_iph.ip6h_nxt =  IPPROTO_ICMPV6;
         memcpy(hyhoption.buf, rabuf, sizeof(rabuf));
@@ -275,15 +268,33 @@ void send_igmp_mld_query(imp_interface *p_if, im_version version,
                 &hyhoption, sizeof(hyhoption)) < 0)
                 IMP_LOG_ERROR("IPV6_HOPOPTS fail %s\n", strerror(errno));
 
-        IMP_LOG_DEBUG("src = %s dst %s\n", imp_pi_ntoa(&p_if->if_addr),
-                       imp_pi_ntoa(p_dst));
+        unsigned char cbuf[CMSG_SPACE(sizeof(struct in6_pktinfo))] = {0};
+        struct iovec iov = {
+            p_hdr,
+            p_hdr_len
+        };
+        struct msghdr msg = {
+            .msg_name = (void *)&p_dst->v6,
+            .msg_namelen = sizeof(p_dst->v6),
+            .msg_iov = &iov,
+            .msg_iovlen = 1,
+            .msg_control = cbuf,
+            .msg_controllen = sizeof(cbuf)
+        };
 
-        if(sendto(socket, p_hdr, p_hdr_len, 0,
-            (struct sockaddr*)p_dst, sizeof(struct sockaddr_in6)) == -1){
+        /* destination iface */
+        struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+        cmsg->cmsg_level = IPPROTO_IPV6;
+        cmsg->cmsg_type = IPV6_PKTINFO;
+        cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
 
-            IMP_LOG_ERROR("sendto failed");
+        struct in6_pktinfo *pktinfo = (struct in6_pktinfo *)CMSG_DATA(cmsg);
+        pktinfo->ipi6_ifindex = p_if->if_index;
+        memcpy(&pktinfo->ipi6_addr, &p_if->if_addr.v6.sin6_addr, sizeof(struct in6_addr));
+
+        if (sendmsg(socket, &msg, 0) < 0) {
+            IMP_LOG_ERROR("mld query: sendmsg failed: %s\n", strerror(errno));
         }
-
     }
     free(p);
     return;
