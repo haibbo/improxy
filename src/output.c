@@ -165,8 +165,6 @@ void send_igmp_mld_query(imp_interface *p_if, im_version version,
             IMP_LOG_ERROR("sendto failed\n");
         }
 
-        free(p);
-
     }else if(family== AF_INET6) {
 
         struct imp_mldv2_query_hdr *p_hdr;
@@ -286,9 +284,8 @@ void send_igmp_mld_query(imp_interface *p_if, im_version version,
             IMP_LOG_ERROR("sendto failed");
         }
 
-        free(p);
     }
-
+    free(p);
     return;
 }
 
