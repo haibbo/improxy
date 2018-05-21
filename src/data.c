@@ -445,6 +445,7 @@ int imp_group_exist_scheduled(imp_group *p_gp)
 imp_timer* group_timer_handler(void *data)
 {
     imp_group    *p_gp = data;
+    pi_addr       pa;
 
     /*    If all source timers have expired then delete Group Record.
      *     If there are still source record timers running, switch to
@@ -453,21 +454,23 @@ imp_timer* group_timer_handler(void *data)
      *     rfc 3367 [6.2.2]
      */
 
+    memcpy(&pa, &p_gp->group_addr, sizeof(pa));
+
     if (imp_source_exist_allow(p_gp) == 0) {
 
-        IMP_LOG_DEBUG("cleanup group %s\n", imp_pi_ntoa(&p_gp->group_addr));
+        IMP_LOG_DEBUG("cleanup group %s\n", imp_pi_ntoa(&pa));
         imp_group_cleanup(p_gp);
 
     } else {
 
-        IMP_LOG_DEBUG("group %s timeout, will contive to include mode\n", imp_pi_ntoa(&p_gp->group_addr));
+        IMP_LOG_DEBUG("group %s timeout, will contive to include mode\n", imp_pi_ntoa(&pa));
 
         p_gp->type = GROUP_INCLUDE;
         imp_remove_timer(&p_gp->timer);
-        imp_membership_db_turnon_update(&p_gp->group_addr);
+        imp_membership_db_turnon_update(&pa);
     }
 
-    imp_membership_db_update(&p_gp->group_addr);
+    imp_membership_db_update(&pa);
     return NULL;
 }
 /*-----------------------------------------------------------------------
@@ -754,6 +757,9 @@ imp_timer* source_timer_handler(void *data)
 {
     imp_source *p_is = data;
     imp_group  *p_gp = p_is->parent_gp;
+    pi_addr     pa;
+
+    memcpy(&pa, &p_gp->group_addr, sizeof(pa));
 
     IMP_LOG_DEBUG("source %s timeout, free it\n", imp_pi_ntoa(&p_is->src_addr));
 
@@ -766,7 +772,7 @@ imp_timer* source_timer_handler(void *data)
          */
         imp_group_cleanup(p_gp);
     }
-    imp_membership_db_update(&p_gp->group_addr);
+    imp_membership_db_update(&pa);
     return NULL;
 }
 

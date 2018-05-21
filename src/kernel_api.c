@@ -270,7 +270,7 @@ static STATUS k_add_ip6_mfc(int socket, int iif_index, pi_addr *p_mcastgrp
     , pi_addr *p_origin, if_set *p_ttls)
 {
 
-    struct mf6cctl mf6c;
+    struct mf6cctl mf6c = {0};
 
     memcpy(&mf6c.mf6cc_origin, &p_origin->v6, sizeof(mf6c.mf6cc_origin));
     memcpy(&mf6c.mf6cc_mcastgrp, &p_mcastgrp->v6, sizeof(mf6c.mf6cc_mcastgrp));
@@ -286,7 +286,7 @@ static STATUS k_add_ip6_mfc(int socket, int iif_index, pi_addr *p_mcastgrp
 static STATUS k_del_ip6_mfc(int socket, pi_addr *p_mcastgrp, pi_addr *p_origin)
 {
 
-    struct mf6cctl mf6c;
+    struct mf6cctl mf6c = {0};
 
     memcpy(&mf6c.mf6cc_origin, &p_origin->v6, sizeof(mf6c.mf6cc_origin));
     memcpy(&mf6c.mf6cc_mcastgrp, &p_mcastgrp->v6, sizeof(mf6c.mf6cc_mcastgrp));
@@ -298,7 +298,7 @@ static STATUS k_del_ip6_mfc(int socket, pi_addr *p_mcastgrp, pi_addr *p_origin)
 STATUS k_mcast_join(pi_addr* p_addr, char* ifname)
 {
 
-    struct group_req req;
+    struct group_req req = {0};
     int socket = 0;
 
     if (ifname != NULL) {
