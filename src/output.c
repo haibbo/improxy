@@ -81,12 +81,7 @@ void send_igmp_mld_query(imp_interface *p_if, im_version version,
         return;
     }
 
-    if(p_if == NULL) {
-        IMP_LOG_DEBUG("p_if = NULL\n");
-        max_len = MAX_RECV_BUF_LEN;
-    }
-    else
-        max_len = p_if->if_mtu;
+    max_len = p_if->if_mtu;
 
     if((p = malloc(max_len)) == NULL){
        IMP_LOG_FATAL("malloc failed\n");
