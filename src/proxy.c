@@ -177,11 +177,19 @@ static STATUS load_config(const char *file)
                 IMP_LOG_ERROR("only allow a upstream interface\n");
                 return STATUS_NOK;
             }
-            strncpy(upinf, p_value, IFNAMSIZ);
+            if (strlen(p_value) >= sizeof(upinf)) {
+                IMP_LOG_ERROR("too long name for upstream: %s\n", p_value);
+                return STATUS_NOK;
+            }
+            strcpy(upinf, p_value);
             IMP_LOG_DEBUG("upstream interface is %s\n", p_value);
         } else if (strcmp(p_token, "downstream") == 0) {
 
-            strncpy(downinf[down_num], p_value, IFNAMSIZ);
+            if (strlen(p_value) >= sizeof(downinf[down_num])) {
+               IMP_LOG_ERROR("too long name for downstream: %s\n", p_value);
+               return STATUS_NOK;
+            }
+            strcpy(downinf[down_num], p_value);
             down_num++;
             IMP_LOG_DEBUG("downstream interface is %s\n", p_value);
         } else if (strcmp(p_token, "quickleave") == 0) {
