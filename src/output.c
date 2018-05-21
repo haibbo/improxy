@@ -168,9 +168,6 @@ void send_igmp_mld_query(imp_interface *p_if, im_version version,
     }else if(family== AF_INET6) {
 
         struct imp_mldv2_query_hdr *p_hdr;
-
-        unsigned char rabuf[] = {0x05, 0x02, 0x00, 0x00, 0x01, 0x00};
-        struct { struct ip6_hbh p_iph;char buf[sizeof(rabuf)];} hyhoption;
         int p_hdr_len;
         int socket = get_igmp_mld_socket(AF_INET6);
 
@@ -178,43 +175,6 @@ void send_igmp_mld_query(imp_interface *p_if, im_version version,
         max_len -= (sizeof(struct ip6_hdr) + 8);
 
         p_hdr = (struct imp_mldv2_query_hdr *)p;
-#if 0 /*uClibc Don't support inet6_opt_xxx*/ /*temp solution: hex code*/
-        {
-            int currentlen = 0;
-            char *hhbuf = NULL;
-            void *optp= NULL;
-            unsigned short val = IP6_ALERT_MLD;
-
-            cmsg->cmsg_type = IPV6_HOPOPTS;
-            cmsg->cmsg_level= IPPROTO_IPV6;
-            cmsg->cmsg_len = CMSG_LEN(hhlen);
-            hhbuf = CMSG_DATA(cmsg);
-
-           if((currentlen = inet6_opt_init(hhbuf, hhlen)) == -1) {
-                IMP_LOG_ERROR("inet6_opt_init fail %s\n", strerror(errno));
-
-            }
-
-            IMP_LOG_DEBUG("currentlen = %d\n", currentlen);
-            if((currentlen = inet6_opt_append(hhbuf, hhlen, currentlen, IP6OPT_ROUTER_ALERT, 2, 2, &optp)) == -1) {
-                IMP_LOG_ERROR("inet6_opt_append fail %s\n", strerror(errno));
-
-            }
-
-            IMP_LOG_DEBUG("currentlen = %d\n", currentlen);
-            inet6_opt_set_val(optp, 0, &val, sizeof(val));
-
-            IMP_LOG_DEBUG("currentlen = %d\n", currentlen);
-            if((currentlen = inet6_opt_finish(hhbuf, hhlen, currentlen)) == -1) {
-                IMP_LOG_ERROR("inet6_opt_finish fail %s\n", strerror(errno));
-
-            }
-
-            IMP_LOG_DEBUG("currentlen = %d\n", currentlen);
-
-        }
-#endif
-
         p_hdr->mldh.mld_type = MLD_LISTENER_QUERY;
         p_hdr->mldh.mld_code = 0;
         p_hdr->mldh.mld_cksum = 0;
@@ -259,14 +219,6 @@ void send_igmp_mld_query(imp_interface *p_if, im_version version,
         }
         p_hdr->mldh.mld_cksum = in_cusm((unsigned short*)p_hdr,
             sizeof(struct imp_mldv2_query_hdr));
-
-        hyhoption.p_iph.ip6h_len = 0;
-        hyhoption.p_iph.ip6h_nxt =  IPPROTO_ICMPV6;
-        memcpy(hyhoption.buf, rabuf, sizeof(rabuf));
-
-        if( setsockopt(socket, IPPROTO_IPV6, IPV6_HOPOPTS,
-                &hyhoption, sizeof(hyhoption)) < 0)
-                IMP_LOG_ERROR("IPV6_HOPOPTS fail %s\n", strerror(errno));
 
         unsigned char cbuf[CMSG_SPACE(sizeof(struct in6_pktinfo))] = {0};
         struct iovec iov = {
