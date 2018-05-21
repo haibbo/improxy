@@ -158,8 +158,8 @@ STATUS init_interface(mcast_proxy *p_mproxy)
         fd = socket(AF_INET, SOCK_DGRAM, 0);
         if(fd == -1)
         {
-            IMP_LOG_ERROR("fd == -1\n");;
-            goto error;
+            IMP_LOG_ERROR("socket error: %s\n", strerror(errno));
+            return STATUS_NOK;
         }
         memset(&ifr, 0, sizeof(struct ifreq));
         strcpy(ifr.ifr_name, p_if->if_name);
