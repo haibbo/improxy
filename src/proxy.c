@@ -239,6 +239,7 @@ static STATUS load_config(const char *file)
         }
     }
 #endif
+    fclose(fd);
     return STATUS_OK;
 
 }
