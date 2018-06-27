@@ -177,11 +177,19 @@ static STATUS load_config(const char *file)
                 IMP_LOG_ERROR("only allow a upstream interface\n");
                 return STATUS_NOK;
             }
-            strncpy(upinf, p_value, IFNAMSIZ);
+            if (strlen(p_value) >= sizeof(upinf)) {
+                IMP_LOG_ERROR("too long name for upstream: %s\n", p_value);
+                return STATUS_NOK;
+            }
+            strcpy(upinf, p_value);
             IMP_LOG_DEBUG("upstream interface is %s\n", p_value);
         } else if (strcmp(p_token, "downstream") == 0) {
 
-            strncpy(downinf[down_num], p_value, IFNAMSIZ);
+            if (strlen(p_value) >= sizeof(downinf[down_num])) {
+               IMP_LOG_ERROR("too long name for downstream: %s\n", p_value);
+               return STATUS_NOK;
+            }
+            strcpy(downinf[down_num], p_value);
             down_num++;
             IMP_LOG_DEBUG("downstream interface is %s\n", p_value);
         } else if (strcmp(p_token, "quickleave") == 0) {
@@ -239,6 +247,7 @@ static STATUS load_config(const char *file)
         }
     }
 #endif
+    fclose(fd);
     return STATUS_OK;
 
 }
@@ -346,14 +355,17 @@ STATUS init_mproxy4(mcast_proxy *p_mp)
         if (setsockopt(p_mp->igmp_socket, IPPROTO_IP, IP_MULTICAST_TTL,
             (void*)&ui, sizeof(ui)))
             IMP_LOG_ERROR("IP_MULTICAST_TTL: %s\n", strerror(errno));
-        ui = 1;
+        ui = 0;
         if (setsockopt(p_mp->igmp_socket, IPPROTO_IP, IP_MULTICAST_LOOP,
             (void*)&ui, sizeof(ui)) < 0)
             IMP_LOG_ERROR("IP_MULTICAST_LOOP: %s\n", strerror(errno));
         ui = 1;
         if (setsockopt(p_mp->igmp_socket, IPPROTO_IP, IP_PKTINFO, &ui, sizeof(ui)))
             IMP_LOG_ERROR("IP_PKTINFO: %s\n", strerror(errno));
-
+        ui = 0xC0; /* set DSCP mark CS6 for outgoing */
+        if (setsockopt(p_mp->igmp_socket, IPPROTO_IP, IP_TOS, &ui, sizeof(ui))) {
+            IMP_LOG_ERROR("IP_TOS: %s\n", strerror(errno));
+        }
 
         if(k_start4_mproxy(p_mp->igmp_socket) < 0)
             return STATUS_NOK;
@@ -390,7 +402,15 @@ STATUS init_mproxy6(mcast_proxy *p_mp)
 {
     struct icmp6_filter filt;
     int             on;
-
+    static struct {
+        struct ip6_hbh hdr;
+        struct ip6_opt_router rt;
+        unsigned char padding[2];
+    } hopts = {
+        .hdr = {0, 0},
+        .rt = {IP6OPT_ROUTER_ALERT, 2, {0, IP6_ALERT_MLD}},
+        .padding = {0x1, 0} /* PadN option, RFC 2460, 4.2 */
+    };
 
 #ifdef ENABLE_IMP_MLD
     if (p_mp->mld_version != IM_DISABLE) {
@@ -437,6 +457,10 @@ STATUS init_mproxy6(mcast_proxy *p_mp)
                sizeof(on)) < 0)
             IMP_LOG_ERROR("IPV6_RECVHOPOPTS: %s\n", strerror(errno));
 
+        /* RTR-ALERT option */
+        if (setsockopt(p_mp->mld_socket, IPPROTO_IPV6, IPV6_HOPOPTS, &hopts, sizeof(hopts))) {
+            IMP_LOG_ERROR("IPV6_HOPOPTS: %s\n", strerror(errno));
+        }
 
         if (k_start6_mproxy(p_mp->mld_socket) < 0 )
             return STATUS_NOK;

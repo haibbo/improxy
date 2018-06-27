@@ -170,8 +170,7 @@ STATUS k_start4_mproxy(int socket)
 
 void k_stop4_mproxy(int socket)
 {
-    int d = 1;
-    if (setsockopt(socket, IPPROTO_IP, MRT_DONE, &d, sizeof(int)) < 0)
+    if (setsockopt(socket, IPPROTO_IP, MRT_DONE, NULL, 0) < 0)
         perror("MRT_DONE");
 }
 
@@ -260,9 +259,8 @@ STATUS k_start6_mproxy(int socket)
 
 void k_stop6_mproxy(int socket)
 {
-    int d = 0;
-    if (setsockopt(socket, IPPROTO_IPV6, MRT6_INIT, &d, sizeof(int)) < 0)
-        perror("MRT6_INIT");
+    if (setsockopt(socket, IPPROTO_IPV6, MRT6_DONE, NULL, 0) < 0)
+        perror("MRT6_DONE");
 }
 
 
@@ -270,7 +268,7 @@ static STATUS k_add_ip6_mfc(int socket, int iif_index, pi_addr *p_mcastgrp
     , pi_addr *p_origin, if_set *p_ttls)
 {
 
-    struct mf6cctl mf6c;
+    struct mf6cctl mf6c = {0};
 
     memcpy(&mf6c.mf6cc_origin, &p_origin->v6, sizeof(mf6c.mf6cc_origin));
     memcpy(&mf6c.mf6cc_mcastgrp, &p_mcastgrp->v6, sizeof(mf6c.mf6cc_mcastgrp));
@@ -286,7 +284,7 @@ static STATUS k_add_ip6_mfc(int socket, int iif_index, pi_addr *p_mcastgrp
 static STATUS k_del_ip6_mfc(int socket, pi_addr *p_mcastgrp, pi_addr *p_origin)
 {
 
-    struct mf6cctl mf6c;
+    struct mf6cctl mf6c = {0};
 
     memcpy(&mf6c.mf6cc_origin, &p_origin->v6, sizeof(mf6c.mf6cc_origin));
     memcpy(&mf6c.mf6cc_mcastgrp, &p_mcastgrp->v6, sizeof(mf6c.mf6cc_mcastgrp));
@@ -298,7 +296,7 @@ static STATUS k_del_ip6_mfc(int socket, pi_addr *p_mcastgrp, pi_addr *p_origin)
 STATUS k_mcast_join(pi_addr* p_addr, char* ifname)
 {
 
-    struct group_req req;
+    struct group_req req = {0};
     int socket = 0;
 
     if (ifname != NULL) {

@@ -171,6 +171,7 @@ struct timeval* imp_check_timer(void)
                 IMP_LOG_DEBUG("continue............\n");
                 /*some object have many timers, like group*/
                 mt_next = LIST_FIRST(&timer_head);
+                w = &tm_max;
                 continue;/*time has been freed*/
             }
         }

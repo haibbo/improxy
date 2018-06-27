@@ -416,11 +416,9 @@ pa_list* pa_list_del(pa_list* p_head, pi_addr *p_addr)
 
         if (memcmp(&p_node->addr, p_addr, sizeof(pi_addr)) == 0){
 
+            pa_list *p_new_head = p_node == p_head ? p_node->next : p_head;
             free(p_node);
-            if ( p_node == p_head)
-                return p_node->next;
-            else
-                return p_head;
+            return p_new_head;
         }
 
     }

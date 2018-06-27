@@ -353,7 +353,7 @@ void imp_input_report_v3(imp_interface *p_if, struct igmpv3_report* p_ig3h, int 
 
         p_grec = (struct igmpv3_grec*)((char*)p_ig3h + cur_len);
 
-        cur_len += (ntohl(p_grec->grec_nsrcs)*sizeof(int) + sizeof(struct igmpv3_grec));
+        cur_len += (ntohs(p_grec->grec_nsrcs)*sizeof(int) + sizeof(struct igmpv3_grec));
         if (cur_len > buf_len) {
 
             IMP_LOG_ERROR("exceed buffer\n");
@@ -366,7 +366,7 @@ void imp_input_report_v3(imp_interface *p_if, struct igmpv3_report* p_ig3h, int 
             continue;
 
         IMP_LOG_DEBUG("number of source = %d\n", p_grec->grec_nsrcs);
-        for (k = 0; k < p_grec->grec_nsrcs; k++) {
+        for (k = 0; k < ntohs(p_grec->grec_nsrcs); k++) {
 
             pi_addr pa;
             imp_build_piaddr(AF_INET, &p_grec->grec_src[k], &pa);
@@ -433,7 +433,7 @@ void imp_input_report_mldv2(imp_interface *p_if, struct mld_hdr *p_mldh, int buf
         if (imp_verify_multicast_addr(&pig) < 0)
             continue;
 
-        cur_len += (ntohl(p_rec->src_num)*sizeof(struct in6_addr) +
+        cur_len += (ntohs(p_rec->src_num)*sizeof(struct in6_addr) +
                         sizeof(struct imp_multi_rec));
 
         if (cur_len > buf_len) {
@@ -442,7 +442,7 @@ void imp_input_report_mldv2(imp_interface *p_if, struct mld_hdr *p_mldh, int buf
             return;
         }
 
-        for (k = 0; k < p_rec->src_num; k++) {
+        for (k = 0; k < ntohs(p_rec->src_num); k++) {
 
             pi_addr pa;
             imp_build_piaddr(AF_INET6, &p_rec->src_list[k], &pa);

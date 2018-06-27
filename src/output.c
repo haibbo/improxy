@@ -81,12 +81,7 @@ void send_igmp_mld_query(imp_interface *p_if, im_version version,
         return;
     }
 
-    if(p_if == NULL) {
-        IMP_LOG_DEBUG("p_if = NULL\n");
-        max_len = MAX_RECV_BUF_LEN;
-    }
-    else
-        max_len = p_if->if_mtu;
+    max_len = p_if->if_mtu;
 
     if((p = malloc(max_len)) == NULL){
        IMP_LOG_FATAL("malloc failed\n");
@@ -170,15 +165,9 @@ void send_igmp_mld_query(imp_interface *p_if, im_version version,
             IMP_LOG_ERROR("sendto failed\n");
         }
 
-        free(p);
-
     }else if(family== AF_INET6) {
 
         struct imp_mldv2_query_hdr *p_hdr;
-
-        int outif = 0;
-        unsigned char rabuf[] = {0x05, 0x02, 0x00, 0x00, 0x01, 0x00};
-        struct { struct ip6_hbh p_iph;char buf[sizeof(rabuf)];} hyhoption;
         int p_hdr_len;
         int socket = get_igmp_mld_socket(AF_INET6);
 
@@ -186,43 +175,6 @@ void send_igmp_mld_query(imp_interface *p_if, im_version version,
         max_len -= (sizeof(struct ip6_hdr) + 8);
 
         p_hdr = (struct imp_mldv2_query_hdr *)p;
-#if 0 /*uClibc Don't support inet6_opt_xxx*/ /*temp solution: hex code*/
-        {
-            int currentlen = 0;
-            char *hhbuf = NULL;
-            void *optp= NULL;
-            unsigned short val = IP6_ALERT_MLD;
-
-            cmsg->cmsg_type = IPV6_HOPOPTS;
-            cmsg->cmsg_level= IPPROTO_IPV6;
-            cmsg->cmsg_len = CMSG_LEN(hhlen);
-            hhbuf = CMSG_DATA(cmsg);
-
-           if((currentlen = inet6_opt_init(hhbuf, hhlen)) == -1) {
-                IMP_LOG_ERROR("inet6_opt_init fail %s\n", strerror(errno));
-
-            }
-
-            IMP_LOG_DEBUG("currentlen = %d\n", currentlen);
-            if((currentlen = inet6_opt_append(hhbuf, hhlen, currentlen, IP6OPT_ROUTER_ALERT, 2, 2, &optp)) == -1) {
-                IMP_LOG_ERROR("inet6_opt_append fail %s\n", strerror(errno));
-
-            }
-
-            IMP_LOG_DEBUG("currentlen = %d\n", currentlen);
-            inet6_opt_set_val(optp, 0, &val, sizeof(val));
-
-            IMP_LOG_DEBUG("currentlen = %d\n", currentlen);
-            if((currentlen = inet6_opt_finish(hhbuf, hhlen, currentlen)) == -1) {
-                IMP_LOG_ERROR("inet6_opt_finish fail %s\n", strerror(errno));
-
-            }
-
-            IMP_LOG_DEBUG("currentlen = %d\n", currentlen);
-
-        }
-#endif
-
         p_hdr->mldh.mld_type = MLD_LISTENER_QUERY;
         p_hdr->mldh.mld_code = 0;
         p_hdr->mldh.mld_cksum = 0;
@@ -268,32 +220,35 @@ void send_igmp_mld_query(imp_interface *p_if, im_version version,
         p_hdr->mldh.mld_cksum = in_cusm((unsigned short*)p_hdr,
             sizeof(struct imp_mldv2_query_hdr));
 
+        unsigned char cbuf[CMSG_SPACE(sizeof(struct in6_pktinfo))] = {0};
+        struct iovec iov = {
+            p_hdr,
+            p_hdr_len
+        };
+        struct msghdr msg = {
+            .msg_name = (void *)&p_dst->v6,
+            .msg_namelen = sizeof(p_dst->v6),
+            .msg_iov = &iov,
+            .msg_iovlen = 1,
+            .msg_control = cbuf,
+            .msg_controllen = sizeof(cbuf)
+        };
 
-        outif = p_if->if_index;
-        if( setsockopt(socket, IPPROTO_IPV6, IPV6_MULTICAST_IF,
-            &outif, sizeof(outif)) < 0)
-            IMP_LOG_ERROR("IPV6_MULTICAST_IF fail %s\n", strerror(errno));
+        /* destination iface */
+        struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+        cmsg->cmsg_level = IPPROTO_IPV6;
+        cmsg->cmsg_type = IPV6_PKTINFO;
+        cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
 
-        hyhoption.p_iph.ip6h_len = 0;
-        hyhoption.p_iph.ip6h_nxt =  IPPROTO_ICMPV6;
-        memcpy(hyhoption.buf, rabuf, sizeof(rabuf));
+        struct in6_pktinfo *pktinfo = (struct in6_pktinfo *)CMSG_DATA(cmsg);
+        pktinfo->ipi6_ifindex = p_if->if_index;
+        memcpy(&pktinfo->ipi6_addr, &p_if->if_addr.v6.sin6_addr, sizeof(struct in6_addr));
 
-        if( setsockopt(socket, IPPROTO_IPV6, IPV6_HOPOPTS,
-                &hyhoption, sizeof(hyhoption)) < 0)
-                IMP_LOG_ERROR("IPV6_HOPOPTS fail %s\n", strerror(errno));
-
-        IMP_LOG_DEBUG("src = %s dst %s\n", imp_pi_ntoa(&p_if->if_addr),
-                       imp_pi_ntoa(p_dst));
-
-        if(sendto(socket, p_hdr, p_hdr_len, 0,
-            (struct sockaddr*)p_dst, sizeof(struct sockaddr_in6)) == -1){
-
-            IMP_LOG_ERROR("sendto failed");
+        if (sendmsg(socket, &msg, 0) < 0) {
+            IMP_LOG_ERROR("mld query: sendmsg failed: %s\n", strerror(errno));
         }
-
-        free(p);
     }
-
+    free(p);
     return;
 }
 
